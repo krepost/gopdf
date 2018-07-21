@@ -28,11 +28,44 @@ func TestText(t *testing.T) {
 	}
 
 	if len(text.fonts) == 1 {
-		if !text.fonts[Helvetica] {
+		if text.fonts[Helvetica] == nil {
 			t.Error("Helvetica missing from fonts")
 		}
 	} else {
 		t.Errorf("Got %d fonts, expected %d", len(text.fonts), 1)
+	}
+}
+
+const textExpectedEncodedOutput = `/Helvetica,WinAnsiEncoding 10.00000 Tf
+12.00000 TL
+(\334berweisung von \200123.) Tj
+T*
+<E5E4F6> Tj
+/ZapfDingbats 10.00000 Tf
+12.00000 TL
+<A4> Tj
+`
+
+func TestEncodedText(t *testing.T) {
+	doc := New()
+	helvetica, err := doc.AddFont(Helvetica, WinAnsiEncoding)
+	if err != nil {
+		t.Errorf("AddFont returned error: %v", err)
+	}
+	dingbats, err := doc.AddFont(ZapfDingbats, StandardEncoding)
+	if err != nil {
+		t.Errorf("AddFont returned error: %v", err)
+	}
+	text := new(Text)
+	text.UseFont(helvetica, 10, 12)
+	text.Text("Überweisung von €123.")
+	text.NextLine()
+	text.Text("åäö")
+	text.UseFont(dingbats, 10, 12)
+	text.Text("❤")
+
+	if text.buf.String() != textExpectedEncodedOutput {
+		t.Errorf("Output was %q, expected %q", text.buf.String(), textExpectedEncodedOutput)
 	}
 }
 

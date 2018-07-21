@@ -4,6 +4,7 @@ package pdf
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -80,16 +81,35 @@ func (state *marshalState) marshalValue(v reflect.Value) error {
 
 // quote escapes a string and returns a PDF string literal.
 func quote(s string) string {
-	r := strings.NewReplacer(
-		"\r", `\r`,
-		"\t", `\t`,
-		"\b", `\b`,
-		"\f", `\f`,
-		"(", `\(`,
-		")", `\)`,
-		`\`, `\\`,
-	)
-	return "(" + r.Replace(s) + ")"
+	escapeSequences := map[byte]string{
+		'\n': "\n",
+		'\r': `\r`,
+		'\t': `\t`,
+		'\b': `\b`,
+		'\f': `\f`,
+		'(':  `\(`,
+		')':  `\)`,
+		'\\': `\\`,
+	}
+	encoded := ""
+	escaped := ""
+	for i := 0; i < len(s); i++ {
+		b := s[i]
+		if esc, ok := escapeSequences[b]; ok {
+			escaped = escaped + esc
+		} else {
+			if b >= 127 || b < 32 {
+				escaped = escaped + fmt.Sprintf("\\%03o", b)
+			} else {
+				escaped = escaped + string([]byte{b})
+			}
+		}
+		encoded = encoded + fmt.Sprintf("%2X", b)
+	}
+	if len(encoded) < len(escaped) {
+		return "<" + encoded + ">"
+	}
+	return "(" + escaped + ")"
 }
 
 func (state *marshalState) marshalSlice(v reflect.Value) error {

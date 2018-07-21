@@ -15,6 +15,7 @@
 
 		func main() {
 			doc := pdf.New()
+			font, _ := doc.AddFont(pdf.Helvetica, pdf.WinAnsiEncoding)
 			canvas := doc.NewPage(pdf.USLetterWidth, pdf.USLetterHeight)
 			canvas.Translate(100, 100)
 
@@ -24,7 +25,7 @@
 			canvas.Stroke(path)
 
 			text := new(pdf.Text)
-			text.SetFont(pdf.Helvetica, 14)
+			text.UseFont(font, 14, 17)
 			text.Text("Hello, World!")
 			canvas.DrawText(text)
 
