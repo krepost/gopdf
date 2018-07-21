@@ -15,9 +15,17 @@ func (n name) String() string {
 }
 
 func (n name) marshalPDF(dst []byte) ([]byte, error) {
-	// TODO: escape characters
 	dst = append(dst, '/')
-	return append(dst, []byte(n)...), nil
+	for i := 0; i < len(n); i++ {
+		b := n[i]
+		if b < 0x21 || b > 0x7E || b == '#' || b == '(' || b == ')' {
+			s := fmt.Sprintf("#%02X", b)
+			dst = append(dst, []byte(s)...)
+		} else {
+			dst = append(dst, b)
+		}
+	}
+	return dst, nil
 }
 
 type indirectObject struct {

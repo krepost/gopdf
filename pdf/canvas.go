@@ -163,9 +163,23 @@ func (canvas *Canvas) Transform(a, b, c, d, e, f float32) {
 
 // DrawText paints a text object onto the canvas.
 func (canvas *Canvas) DrawText(text *Text) {
-	for fontName := range text.fonts {
-		if _, ok := canvas.page.Resources.Font[fontName]; !ok {
-			canvas.page.Resources.Font[fontName] = canvas.doc.standardFont(fontName)
+	for _, font := range text.fonts {
+		if f, ok := canvas.doc.fonts[font.pdfName]; ok {
+			font = f
+		} else {
+			// Font was created on the fly by SetFont().
+			// We need to add a font dictionary to the document.
+			// Since SetFont() does not support any font encoding,
+			// we use font.pdfName as the font name for BaseFont.
+			font.pdfDict = canvas.doc.add(standardFontDict{
+				Type:     fontType,
+				Subtype:  fontType1Subtype,
+				BaseFont: font.pdfName,
+			})
+			canvas.doc.fonts[font.pdfName] = font
+		}
+		if _, ok := canvas.page.Resources.Font[font.pdfName]; !ok {
+			canvas.page.Resources.Font[font.pdfName] = font.pdfDict
 		}
 	}
 	writeCommand(canvas.contents, "BT")

@@ -3,6 +3,7 @@
 package pdf
 
 import (
+	"fmt"
 	"image"
 	"io"
 	"strconv"
@@ -37,7 +38,7 @@ type Document struct {
 	encoder
 	catalog *catalog
 	pages   []indirectObject
-	fonts   map[name]Reference
+	fonts   map[name]*Font
 }
 
 // New creates a new document with no pages.
@@ -47,7 +48,7 @@ func New() *Document {
 		Type: catalogType,
 	}
 	doc.root = doc.add(doc.catalog)
-	doc.fonts = make(map[name]Reference, 14)
+	doc.fonts = make(map[name]*Font)
 	return doc
 }
 
@@ -77,22 +78,48 @@ func (doc *Document) NewPage(width, height Unit) *Canvas {
 	}
 }
 
-// standardFont returns a reference to a standard font dictionary.  If there is
-// no font dictionary for the font in the document yet, it is added
-// automatically.
-func (doc *Document) standardFont(fontName name) Reference {
-	if ref, ok := doc.fonts[fontName]; ok {
-		return ref
+func (doc *Document) AddFont(font, encoding name) (*Font, error) {
+	if !IsBuiltinFont(font) {
+		return nil, fmt.Errorf("Unknown font name: %v", font)
 	}
-
-	// TODO: check name is standard?
-	ref := doc.add(standardFontDict{
-		Type:     fontType,
-		Subtype:  fontType1Subtype,
-		BaseFont: fontName,
-	})
-	doc.fonts[fontName] = ref
-	return ref
+	if !IsBuiltinEncoding(encoding) {
+		return nil, fmt.Errorf("Unknown font encoding: %v", encoding)
+	}
+	nam := font
+	if encoding != StandardEncoding {
+		nam = nam + name(",") + encoding
+	}
+	if f, ok := doc.fonts[nam]; ok {
+		return f, nil
+	}
+	f := &Font{
+		pdfName: nam,
+		pdfDict: doc.add(standardFontDict{
+			Type:     fontType,
+			Subtype:  fontType1Subtype,
+			BaseFont: font,
+			Encoding: encoding,
+		}),
+		toCodePoint: map[rune]byte{},
+		glyphWidth:  map[rune]int{},
+	}
+	if encoding == StandardEncoding {
+		for _, m := range fontMetrics[font] {
+			if m.codePoint != -1 {
+				f.toCodePoint[m.rune] = byte(m.codePoint)
+				f.glyphWidth[m.rune] = m.width
+			}
+		}
+	} else {
+		f.toCodePoint = fontEncodings[encoding]
+		for _, m := range fontMetrics[font] {
+			if _, ok := f.toCodePoint[m.rune]; ok {
+				f.glyphWidth[m.rune] = m.width
+			}
+		}
+	}
+	doc.fonts[f.pdfName] = f
+	return f, nil
 }
 
 // AddImage encodes an image into the document's stream and returns its PDF
@@ -227,4 +254,5 @@ type standardFontDict struct {
 	Type     name
 	Subtype  name
 	BaseFont name
+	Encoding name `pdf:",omitempty"`
 }
