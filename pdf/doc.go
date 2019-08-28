@@ -8,7 +8,7 @@
 		package main
 
 		import (
-			"bitbucket.org/zombiezen/gopdf/pdf"
+			"github.com/krepost/gopdf/pdf"
 			"fmt"
 			"os"
 		)
