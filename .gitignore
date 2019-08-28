@@ -1,14 +1,3 @@
-syntax:glob
-*.[568ao]
-[568a].out
-*.cgo*.go
-*.cgo*.c
-_cgo_*
-_obj
-_test
-_testmain.go
-build.out
-test.out
 buildmetrics/buildmetrics
 buildmetrics/metrics.go
 buildmetrics/*.afm
